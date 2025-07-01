@@ -17,6 +17,8 @@ interface Props {
     query: InvitationsQuery;
 }
 
+const PAGE_SIZE = 11;
+
 export default function InvitationsListComponent(props: Props): JSX.Element {
     const { query } = props;
 
@@ -34,17 +36,16 @@ export default function InvitationsListComponent(props: Props): JSX.Element {
         dispatch(declineInvitationAsync(invitationKey))
     ), []);
 
-    const onPageChange = useCallback((newPage: number, newPageSize: number) => {
+    const onPageChange = useCallback((newPage) => {
         dispatch(getInvitationsAsync({
             ...query,
             page: newPage,
-            pageSize: newPageSize,
         }));
-    }, [query]);
+    }, []);
 
     return (
         <>
-            <Row justify='center' align='top' className='cvat-resource-list-wrapper cvat-invitations-list-content'>
+            <Row justify='center' align='top' className='cvat-invitations-list-content'>
                 <Col className='cvat-invitations-list' {...dimensions}>
                     {invitations.map(
                         (invitation: Invitation): JSX.Element => (
@@ -58,16 +59,16 @@ export default function InvitationsListComponent(props: Props): JSX.Element {
                     )}
                 </Col>
             </Row>
-            <Row justify='center' align='middle' className='cvat-resource-pagination-wrapper'>
+            <Row justify='center' align='middle'>
                 <Col {...dimensions}>
                     <Pagination
                         className='cvat-invitations-pagination'
-                        onChange={onPageChange}
+                        showSizeChanger={false}
                         total={totalCount}
-                        pageSize={query.pageSize}
+                        pageSize={PAGE_SIZE}
                         current={query.page}
+                        onChange={onPageChange}
                         showQuickJumper
-                        showSizeChanger
                     />
                 </Col>
             </Row>

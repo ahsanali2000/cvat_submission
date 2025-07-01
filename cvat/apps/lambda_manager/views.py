@@ -171,7 +171,7 @@ class LambdaFunction:
         # ID of the function (e.g. omz.public.yolo-v3)
         self.id = data["metadata"]["name"]
         # type of the function (e.g. detector, interactor)
-        meta_anno: dict[str, str] = data["metadata"]["annotations"]
+        meta_anno = data["metadata"]["annotations"]
         kind = meta_anno.get("type")
         try:
             self.kind = FunctionKind(kind)
@@ -247,22 +247,6 @@ class LambdaFunction:
         self.help_message = meta_anno.get("help_message", "")
         self.gateway = gateway
 
-        if "supported_shape_types" in meta_anno:
-            self.supported_shape_types = [
-                stripped
-                for st in meta_anno["supported_shape_types"].split(",")
-                for stripped in [st.strip()]
-                if stripped
-            ]
-            if not self.supported_shape_types:
-                raise InvalidFunctionMetadataError(
-                    f"{self.id!r} lambda function has no supported shape types"
-                )
-        else:
-            # This means that the function only supports rectangles, and that it
-            # implements the legacy interface where "shapes" only contains point arrays.
-            self.supported_shape_types = None
-
     def to_dict(self):
         response = {
             "id": self.id,
@@ -282,12 +266,6 @@ class LambdaFunction:
                     "startswith_box_optional": self.startswith_box_optional,
                     "help_message": self.help_message,
                     "animated_gif": self.animated_gif,
-                }
-            )
-        elif self.kind is FunctionKind.TRACKER:
-            response.update(
-                {
-                    "supported_shape_types": self.supported_shape_types or ["rectangle"],
                 }
             )
 
@@ -491,49 +469,11 @@ class LambdaFunction:
         elif self.kind == FunctionKind.TRACKER:
             signer = TimestampSigner(salt=f"cvat-tracker-state:{self.id}")
 
-            def prepare_shape(shape):
-                if shape is None:
-                    return None
-
-                supported_shape_types = self.supported_shape_types or [ShapeType.RECTANGLE]
-                if shape["type"] not in supported_shape_types:
-                    raise ValidationError(
-                        f"This function does not support shapes of type {shape['type']!r}"
-                    )
-
-                if self.supported_shape_types is None:
-                    # If the function does not declare supported shape types,
-                    # it uses the legacy behavior where "shapes" only contains point arrays
-                    # and the "rectangle" type is implied.
-                    return shape["points"]
-
-                return shape
-
             try:
-                if "states" not in data:
-                    # initializing tracking
-                    shapes = mandatory_arg("shapes")
-                    states = []
-                elif "shapes" not in data:
-                    # continuing tracking
-                    states = mandatory_arg("states")
-
-                    # Previously, the UI used to pass the previous-frame shapes when continuing
-                    # tracking. It doesn't do that anymore, but to support old tracking functions
-                    # that rely on the length of the "shapes" array, we'll pad it out with nulls.
-                    # If a function relies on the _contents_ of the "shapes" array, it will not
-                    # work anymore.
-                    shapes = [None] * len(states)
-                else:
-                    # We should not normally get here, but it's possible if e.g. someone is still
-                    # running an old UI version.
-                    states = data["states"]
-                    shapes = data["shapes"]
-
                 payload.update(
                     {
                         "image": self._get_image(db_task, mandatory_arg("frame")),
-                        "shapes": list(map(prepare_shape, shapes)),
+                        "shapes": data.get("shapes", []),
                         "states": [
                             (
                                 None
@@ -542,7 +482,7 @@ class LambdaFunction:
                                     signer.unsign(state, max_age=self.TRACKER_STATE_MAX_AGE)
                                 )
                             )
-                            for state in states
+                            for state in data.get("states", [])
                         ],
                     }
                 )
@@ -628,11 +568,6 @@ class LambdaFunction:
                 annotations=response_filtered,
             )
         elif self.kind == FunctionKind.TRACKER:
-            if "shapes" in response and not self.supported_shape_types:
-                response["shapes"] = [
-                    None if points is None else {"type": ShapeType.RECTANGLE, "points": points}
-                    for points in response["shapes"]
-                ]
             response["states"] = [
                 # We could've used .sign_object, but that unconditionally applies
                 # an extra layer of Base64 encoding, bloating each state by 33%.

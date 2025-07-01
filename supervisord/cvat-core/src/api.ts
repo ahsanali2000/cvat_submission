@@ -195,10 +195,6 @@ function build(): CVATCore {
                 const result = await PluginRegistry.apiWrapper(cvat.actions.register, action);
                 return result;
             },
-            async unregister(action: BaseAction) {
-                const result = await PluginRegistry.apiWrapper(cvat.actions.unregister, action);
-                return result;
-            },
             async run(
                 instance: Job | Task,
                 actions: BaseAction,

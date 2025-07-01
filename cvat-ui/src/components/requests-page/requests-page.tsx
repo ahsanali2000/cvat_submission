@@ -5,23 +5,28 @@
 import './styles.scss';
 import { useSelector } from 'react-redux';
 import React, { useEffect } from 'react';
-import { CombinedState, RequestsQuery } from 'reducers';
+import { CombinedState, Indexable } from 'reducers';
 import { useHistory } from 'react-router';
 
 import Spin from 'antd/lib/spin';
 
 import { updateHistoryFromQuery } from 'components/resource-sorting-filtering';
-import { useResourceQuery } from 'utils/hooks';
 import EmptyListComponent from './empty-list';
-import RequestsList from './requests-list';
+import RequestsList, { PAGE_SIZE } from './requests-list';
 
 export default function RequestsPageComponent(): JSX.Element {
     const history = useHistory();
     const { fetching, query, requests } = useSelector((state: CombinedState) => state.requests);
 
     const count = Object.keys(requests).length;
-
-    const updatedQuery = useResourceQuery<RequestsQuery>(query);
+    const updatedQuery = { ...query };
+    const queryParams = new URLSearchParams(history.location.search);
+    for (const key of Object.keys(updatedQuery)) {
+        (updatedQuery as Indexable)[key] = queryParams.get(key) || null;
+        if (key === 'page') {
+            updatedQuery.page = updatedQuery.page ? +updatedQuery.page : 1;
+        }
+    }
 
     useEffect(() => {
         history.replace({
@@ -29,7 +34,7 @@ export default function RequestsPageComponent(): JSX.Element {
         });
     }, [query]);
 
-    const pageOutOfBounds = updatedQuery.page ? updatedQuery.page > Math.ceil(count / query.pageSize) : false;
+    const pageOutOfBounds = updatedQuery.page ? updatedQuery.page > Math.ceil(count / PAGE_SIZE) : false;
     const content = (count && !pageOutOfBounds) ? (
         <RequestsList query={updatedQuery} count={count} />
     ) : <EmptyListComponent />;

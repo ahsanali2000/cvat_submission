@@ -28,7 +28,6 @@ import { AIToolsIcon } from 'icons';
 import { Canvas, convertShapesForInteractor } from 'cvat-canvas-wrapper';
 import {
     getCore, Label, MLModel, ObjectState, ObjectType, ShapeType, Job,
-    MinimalShape, InteractorResults, TrackerResults,
 } from 'cvat-core-wrapper';
 import openCVWrapper, { MatType } from 'utils/opencv-wrapper/opencv-wrapper';
 import {
@@ -154,27 +153,26 @@ interface State {
     portals: React.ReactPortal[];
 }
 
+type InteractorResults = Extract<Awaited<ReturnType<typeof core.lambda.call>>, { mask: number[][] }>;
+type TrackerResults = Extract<Awaited<ReturnType<typeof core.lambda.call>>, { states: any[]; shapes: number[][] }>;
 type DetectorResults = Extract<Awaited<ReturnType<typeof core.lambda.call>>, { version: number }>;
 
-function trackedRectangleMapper(shape: MinimalShape): MinimalShape {
-    return {
-        type: ShapeType.RECTANGLE,
-        points: shape.points.reduce(
-            (acc: number[], value: number, index: number): number[] => {
-                if (index % 2) {
+function trackedRectangleMapper(shape: number[]): number[] {
+    return shape.reduce(
+        (acc: number[], value: number, index: number): number[] => {
+            if (index % 2) {
                 // y
-                    acc[1] = Math.min(acc[1], value);
-                    acc[3] = Math.max(acc[3], value);
-                } else {
+                acc[1] = Math.min(acc[1], value);
+                acc[3] = Math.max(acc[3], value);
+            } else {
                 // x
-                    acc[0] = Math.min(acc[0], value);
-                    acc[2] = Math.max(acc[2], value);
-                }
-                return acc;
-            },
-            [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER],
-        ),
-    };
+                acc[0] = Math.min(acc[0], value);
+                acc[2] = Math.max(acc[2], value);
+            }
+            return acc;
+        },
+        [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER, Number.MIN_SAFE_INTEGER, Number.MIN_SAFE_INTEGER],
+    );
 }
 
 function registerPlugin(): (callback: null | (() => void)) => void {
@@ -236,14 +234,11 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
 
     public constructor(props: Props) {
         super(props);
-
-        const supportedTrackers = this.getSupportedTrackers();
-
         this.state = {
             convertMasksToPolygons: false,
             startInteractingWithBox: false,
             activeInteractor: props.interactors.length ? props.interactors[0] : null,
-            activeTracker: supportedTrackers.length ? supportedTrackers[0] : null,
+            activeTracker: props.trackers.length ? props.trackers[0] : null,
             activeLabelID: props.labels.length ? props.labels[0].id as number : null,
             approxPolyAccuracy: props.defaultApproxPolyAccuracy,
             trackedShapes: [],
@@ -351,11 +346,6 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
         onRemoveAnnotations(null);
         canvasInstance.html().removeEventListener('canvas.interacted', this.interactionListener);
         canvasInstance.html().removeEventListener('canvas.canceled', this.cancelListener);
-    }
-
-    private getSupportedTrackers(): MLModel[] {
-        const { trackers } = this.props;
-        return trackers.filter((tracker: MLModel) => tracker.supportedShapeTypes!.includes(ShapeType.RECTANGLE));
     }
 
     private contextmenuDisabler = (e: MouseEvent): void => {
@@ -696,11 +686,11 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
             stateful: Map<string | number, {
                 clientIDs: number[];
                 states: any[];
-                shapes: MinimalShape[];
+                shapes: number[][];
             }>;
             stateless: Map<string | number, {
                 clientIDs: number[];
-                shapes: MinimalShape[];
+                shapes: number[][];
             }>;
         };
 
@@ -737,7 +727,7 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
                                 states: [],
                             };
                             container.clientIDs.push(clientID);
-                            container.shapes.push({ type: clientState.shapeType, points });
+                            container.shapes.push(points);
                             container.states.push(serverlessState);
                             acc.stateful.set(trackerModel.id, container);
                         } else {
@@ -746,7 +736,7 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
                                 shapes: [],
                             };
                             container.clientIDs.push(clientID);
-                            container.shapes.push({ type: clientState.shapeType, points });
+                            container.shapes.push(points);
                             acc.stateless.set(trackerModel.id, container);
                         }
                     }
@@ -830,6 +820,7 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
                         // eslint-disable-next-line no-await-in-loop
                         const response = await core.lambda.call(jobInstance.taskId, tracker, {
                             frame,
+                            shapes: trackableObjects.shapes,
                             states: trackableObjects.states,
                             job: jobInstance.id,
                         }) as TrackerResults;
@@ -845,10 +836,10 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
                             const [trackedShape] = trackedShapes.filter(
                                 (_trackedShape: TrackedShape) => _trackedShape.clientID === clientID,
                             );
-                            objectState.points = shape.points;
+                            objectState.points = shape;
                             objectState.save().then(() => {
                                 trackedShape.serverlessState = state;
-                                trackedShape.shapePoints = shape.points;
+                                trackedShape.shapePoints = shape;
                             });
                         }
                     } catch (error: any) {
@@ -981,13 +972,11 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
 
     private renderTrackerBlock(): JSX.Element {
         const {
-            canvasInstance, jobInstance, frame, onInteractionStart,
+            trackers, canvasInstance, jobInstance, frame, onInteractionStart,
         } = this.props;
         const { activeTracker, activeLabelID, fetching } = this.state;
 
-        const supportedTrackers = this.getSupportedTrackers();
-
-        if (!supportedTrackers.length) {
+        if (!trackers.length) {
             return (
                 <Row justify='center' align='middle' style={{ marginTop: '5px' }}>
                     <Col>
@@ -1010,10 +999,10 @@ export class ToolsControlComponent extends React.PureComponent<Props, State> {
                     <Col span={24}>
                         <Select
                             style={{ width: '100%' }}
-                            defaultValue={supportedTrackers[0].name}
+                            defaultValue={trackers[0].name}
                             onChange={this.setActiveTracker}
                         >
-                            {supportedTrackers.map(
+                            {trackers.map(
                                 (tracker: MLModel): JSX.Element => (
                                     <Select.Option value={tracker.id} title={tracker.description} key={tracker.id}>
                                         {tracker.name}

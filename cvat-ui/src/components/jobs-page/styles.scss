@@ -6,7 +6,11 @@
 @import 'base';
 
 .cvat-jobs-page {
-    @include cvat-resource-page;
+    padding-top: $grid-unit-size * 2;
+    padding-bottom: $grid-unit-size;
+    height: 100%;
+    width: 100%;
+    overflow: auto;
 
     .cvat-jobs-page-top-bar {
         margin-bottom: $grid-unit-size;
@@ -160,7 +164,6 @@
     .cvat-jobs-page-list {
         display: flex;
         flex-wrap: wrap;
-        overflow-y: auto;
 
         > div {
             width: 100%;

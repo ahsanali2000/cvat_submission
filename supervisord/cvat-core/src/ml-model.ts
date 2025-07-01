@@ -5,7 +5,7 @@
 
 import PluginRegistry from './plugins';
 import {
-    LabelType, ModelProviders, ModelKind, ShapeType,
+    LabelType, ModelProviders, ModelKind,
 } from './enums';
 import {
     SerializedModel, ModelParams, MLModelTip, MLModelLabel,
@@ -28,10 +28,6 @@ export default class MLModel {
 
     public get labels(): MLModelLabel[] {
         return Array.isArray(this.serialized.labels_v2) ? [...this.serialized.labels_v2] : [];
-    }
-
-    public get supportedShapeTypes(): ShapeType[] | undefined {
-        return this.serialized.supported_shape_types;
     }
 
     public get version(): number {

@@ -20,7 +20,6 @@ function updateHistoryFromQuery(query: Indexable): string {
         ...(query.search ? { search: query.search } : {}),
         ...(query.sort ? { sort: query.sort } : {}),
         ...(query.page ? { page: `${query.page}` } : {}),
-        ...(query.pageSize ? { pageSize: `${query.pageSize}` } : {}),
     });
 
     return search.toString();

@@ -6,9 +6,8 @@
 import React from 'react';
 import { Row, Col } from 'antd/lib/grid';
 import Text from 'antd/lib/typography/Text';
-import {
-    LockFilled, UnlockOutlined, EyeInvisibleFilled, EyeOutlined,
-} from '@ant-design/icons';
+import { Input } from 'antd';
+import { LockFilled, UnlockOutlined, EyeInvisibleFilled, EyeOutlined } from '@ant-design/icons';
 
 import CVATTooltip from 'components/common/cvat-tooltip';
 
@@ -18,6 +17,7 @@ interface Props {
     visible: boolean;
     statesHidden: boolean;
     statesLocked: boolean;
+    description: string;
     hideStates(): void;
     showStates(): void;
     lockStates(): void;
@@ -31,6 +31,7 @@ function LabelItemComponent(props: Props): JSX.Element {
         visible,
         statesHidden,
         statesLocked,
+        description,
         hideStates,
         showStates,
         lockStates,
@@ -82,6 +83,14 @@ function LabelItemComponent(props: Props): JSX.Element {
                 ) : (
                     <EyeOutlined {...classes.hidden.disabled} onClick={hideStates} />
                 )}
+            </Col>
+            <Col span={12}>
+                <Input.TextArea
+                    value={description}
+                    placeholder='Description...'
+                    autoSize={{ minRows: 1, maxRows: 3 }}
+                    style={{ marginTop: '4px' }}
+                />
             </Col>
         </Row>
     );

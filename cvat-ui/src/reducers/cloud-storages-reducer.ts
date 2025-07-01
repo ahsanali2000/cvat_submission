@@ -16,7 +16,6 @@ const defaultState: CloudStoragesState = {
     previews: {},
     gettingQuery: {
         page: 1,
-        pageSize: 12,
         id: null,
         search: null,
         sort: null,

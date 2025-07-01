@@ -25,7 +25,6 @@ const defaultState: ModelsState = {
     totalCount: 0,
     query: {
         page: 1,
-        pageSize: 12,
         id: null,
         search: null,
         filter: null,

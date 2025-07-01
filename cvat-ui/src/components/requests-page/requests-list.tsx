@@ -16,26 +16,28 @@ import moment from 'moment';
 import dimensions from 'utils/dimensions';
 import RequestCard from './request-card';
 
+export const PAGE_SIZE = 10;
+
 interface Props {
     query: RequestsQuery;
     count: number;
 }
 
-function setUpRequestsList(requests: Request[], newPage: number, pageSize: number): Request[] {
+function setUpRequestsList(requests: Request[], newPage: number): Request[] {
     const displayRequests = [...requests];
     displayRequests.sort((a, b) => moment(b.createdDate).valueOf() - moment(a.createdDate).valueOf());
-    return displayRequests.slice((newPage - 1) * pageSize, newPage * pageSize);
+    return displayRequests.slice((newPage - 1) * PAGE_SIZE, newPage * PAGE_SIZE);
 }
 
 function RequestsList(props: Props): JSX.Element {
     const dispatch = useDispatch();
     const { query, count } = props;
-    const { page, pageSize } = query;
+    const { page } = query;
     const { requests, disabled } = useSelector((state: CombinedState) => ({
         requests: state.requests.requests, disabled: state.requests.disabled,
     }), shallowEqual);
 
-    const requestViews = setUpRequestsList(Object.values(requests), page, pageSize)
+    const requestViews = setUpRequestsList(Object.values(requests), page)
         .map((request: Request): JSX.Element => (
             <RequestCard
                 request={request}
@@ -47,26 +49,22 @@ function RequestsList(props: Props): JSX.Element {
 
     return (
         <>
-            <Row justify='center' className='cvat-resource-list-wrapper'>
+            <Row justify='center'>
                 <Col className='cvat-requests-list' {...dimensions}>
                     {requestViews}
                 </Col>
             </Row>
-            <Row justify='center' align='middle' className='cvat-resource-pagination-wrapper'>
+            <Row justify='center' align='middle'>
                 <Pagination
                     className='cvat-tasks-pagination'
-                    onChange={(newPage: number, newPageSize: number) => {
-                        dispatch(requestsActions.getRequests({
-                            ...query,
-                            page: newPage,
-                            pageSize: newPageSize,
-                        }, false));
+                    onChange={(newPage: number) => {
+                        dispatch(requestsActions.getRequests({ ...query, page: newPage }, false));
                     }}
+                    showSizeChanger={false}
                     total={count}
                     current={page}
-                    pageSize={pageSize}
+                    pageSize={PAGE_SIZE}
                     showQuickJumper
-                    showSizeChanger
                 />
             </Row>
         </>

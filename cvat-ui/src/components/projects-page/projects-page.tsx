@@ -8,11 +8,10 @@ import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router';
 import { useDispatch, useSelector } from 'react-redux';
 import Spin from 'antd/lib/spin';
-import { CombinedState, ProjectsQuery } from 'reducers';
+import { CombinedState, Indexable, ProjectsQuery } from 'reducers';
 import { getProjectsAsync } from 'actions/projects-actions';
 import { updateHistoryFromQuery } from 'components/resource-sorting-filtering';
 import { anySearch } from 'utils/any-search';
-import { useResourceQuery } from 'utils/hooks';
 import EmptyListComponent from './empty-list';
 import TopBarComponent from './top-bar';
 import ProjectListComponent from './project-list';
@@ -28,7 +27,14 @@ export default function ProjectsPageComponent(): JSX.Element {
     const [isMounted, setIsMounted] = useState(false);
     const isAnySearch = anySearch<ProjectsQuery>(query);
 
-    const updatedQuery = useResourceQuery<ProjectsQuery>(query, { pageSize: 12 });
+    const queryParams = new URLSearchParams(history.location.search);
+    const updatedQuery = { ...query };
+    for (const key of Object.keys(updatedQuery)) {
+        (updatedQuery as Indexable)[key] = queryParams.get(key) || null;
+        if (key === 'page') {
+            updatedQuery.page = updatedQuery.page ? +updatedQuery.page : 1;
+        }
+    }
 
     useEffect(() => {
         dispatch(getProjectsAsync({ ...updatedQuery }));

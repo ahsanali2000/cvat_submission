@@ -45,6 +45,7 @@ export function labelShapeType(labelData?: Label | Partial<LabelType>): ShapeTyp
 }
 
 const defaultState: AnnotationState = {
+    labelDescriptions: {},
     activities: {
         loads: {},
     },

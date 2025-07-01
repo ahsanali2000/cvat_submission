@@ -12,10 +12,9 @@ import { Col, Row } from 'antd/lib/grid';
 import Pagination from 'antd/lib/pagination';
 
 import { updateHistoryFromQuery } from 'components/resource-sorting-filtering';
-import { CombinedState, JobsQuery } from 'reducers';
+import { CombinedState, Indexable, JobsQuery } from 'reducers';
 import { getJobsAsync } from 'actions/jobs-actions';
 import { anySearch } from 'utils/any-search';
-import { useResourceQuery } from 'utils/hooks';
 
 import TopBarComponent from './top-bar';
 import JobsContentComponent from './jobs-content';
@@ -29,7 +28,14 @@ function JobsPageComponent(): JSX.Element {
     const fetching = useSelector((state: CombinedState) => state.jobs.fetching);
     const count = useSelector((state: CombinedState) => state.jobs.count);
 
-    const updatedQuery = useResourceQuery<JobsQuery>(query, { pageSize: 12 });
+    const queryParams = new URLSearchParams(history.location.search);
+    const updatedQuery = { ...query };
+    for (const key of Object.keys(updatedQuery)) {
+        (updatedQuery as Indexable)[key] = queryParams.get(key) || null;
+        if (key === 'page') {
+            updatedQuery.page = updatedQuery.page ? +updatedQuery.page : 1;
+        }
+    }
 
     useEffect(() => {
         dispatch(getJobsAsync({ ...updatedQuery }));
@@ -49,23 +55,21 @@ function JobsPageComponent(): JSX.Element {
     const content = count ? (
         <>
             <JobsContentComponent />
-            <Row justify='space-around' about='middle' className='cvat-resource-pagination-wrapper'>
+            <Row justify='space-around' about='middle'>
                 <Col md={22} lg={18} xl={16} xxl={16}>
                     <Pagination
                         className='cvat-jobs-page-pagination'
-                        onChange={(page: number, pageSize: number) => {
+                        onChange={(page: number) => {
                             dispatch(getJobsAsync({
                                 ...query,
                                 page,
-                                pageSize,
                             }));
                         }}
+                        showSizeChanger={false}
                         total={count}
-                        pageSizeOptions={[12, 24, 48, 96]}
+                        pageSize={12}
                         current={query.page}
-                        pageSize={query.pageSize}
                         showQuickJumper
-                        showSizeChanger
                     />
                 </Col>
             </Row>

@@ -980,6 +980,7 @@ class Label(models.Model):
     color = models.CharField(default='', max_length=8)
     type = models.CharField(max_length=32, choices=LabelType.choices(), default=LabelType.ANY)
     parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='sublabels')
+    description= models.TextField(blank=True, default="")
 
     def __str__(self):
         return self.name
@@ -1172,7 +1173,6 @@ class TrackedShapeAttributeVal(AttributeVal):
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     rating = models.FloatField(default=0.0)
-    last_activity_date = models.DateTimeField(null=True, blank=True, default=None)
     has_analytics_access = models.BooleanField(
         _("has access to analytics"),
         default=False,

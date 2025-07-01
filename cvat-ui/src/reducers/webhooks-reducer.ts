@@ -11,7 +11,6 @@ const defaultState: WebhooksState = {
     totalCount: 0,
     query: {
         page: 1,
-        pageSize: 10,
         id: null,
         projectId: null,
         search: null,

@@ -12,9 +12,8 @@ import { updateHistoryFromQuery } from 'components/resource-sorting-filtering';
 import Spin from 'antd/lib/spin';
 import notification from 'antd/lib/notification';
 
-import { CombinedState, ModelsQuery } from 'reducers';
-import { useResourceQuery } from 'utils/hooks';
-import DeployedModelsList from './deployed-models-list';
+import { CombinedState, Indexable } from 'reducers';
+import DeployedModelsList, { PAGE_SIZE } from './deployed-models-list';
 import EmptyListComponent from './empty-list';
 import TopBar from './top-bar';
 
@@ -25,15 +24,21 @@ function ModelsPageComponent(): JSX.Element {
     const query = useSelector((state: CombinedState) => state.models.query);
     const totalCount = useSelector((state: CombinedState) => state.models.totalCount);
 
-    const updatedQuery = useResourceQuery<ModelsQuery>(query, { pageSize: 12 });
-
+    const updatedQuery = { ...query };
+    const queryParams = new URLSearchParams(history.location.search);
+    for (const key of Object.keys(updatedQuery)) {
+        (updatedQuery as Indexable)[key] = queryParams.get(key) || null;
+        if (key === 'page') {
+            updatedQuery.page = updatedQuery.page ? +updatedQuery.page : 1;
+        }
+    }
     useEffect(() => {
         history.replace({
             search: updateHistoryFromQuery(query),
         });
     }, [query]);
 
-    const pageOutOfBounds = totalCount && updatedQuery.page > Math.ceil(totalCount / query.pageSize);
+    const pageOutOfBounds = totalCount && updatedQuery.page > Math.ceil(totalCount / PAGE_SIZE);
     useEffect(() => {
         dispatch(getModelsAsync(updatedQuery));
         if (pageOutOfBounds) {

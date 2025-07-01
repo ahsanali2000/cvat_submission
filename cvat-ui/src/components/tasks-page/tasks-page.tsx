@@ -11,12 +11,11 @@ import Spin from 'antd/lib/spin';
 import { Col, Row } from 'antd/lib/grid';
 import Pagination from 'antd/lib/pagination';
 
-import { TasksQuery } from 'reducers';
+import { TasksQuery, Indexable } from 'reducers';
 import { updateHistoryFromQuery } from 'components/resource-sorting-filtering';
 import TaskListContainer from 'containers/tasks-page/tasks-list';
 import { getTasksAsync } from 'actions/tasks-actions';
 import { anySearch } from 'utils/any-search';
-import { useResourceQuery } from 'utils/hooks';
 
 import TopBar from './top-bar';
 import EmptyListComponent from './empty-list';
@@ -37,7 +36,14 @@ function TasksPageComponent(props: Props): JSX.Element {
     const history = useHistory();
     const [isMounted, setIsMounted] = useState(false);
 
-    const updatedQuery = useResourceQuery<TasksQuery>(query);
+    const queryParams = new URLSearchParams(history.location.search);
+    const updatedQuery = { ...query };
+    for (const key of Object.keys(updatedQuery)) {
+        (updatedQuery as Indexable)[key] = queryParams.get(key) || null;
+        if (key === 'page') {
+            updatedQuery.page = updatedQuery.page ? +updatedQuery.page : 1;
+        }
+    }
 
     useEffect(() => {
         dispatch(getTasksAsync({ ...updatedQuery }));
@@ -57,22 +63,21 @@ function TasksPageComponent(props: Props): JSX.Element {
     const content = count ? (
         <>
             <TaskListContainer />
-            <Row justify='center' align='middle' className='cvat-resource-pagination-wrapper'>
+            <Row justify='center' align='middle'>
                 <Col md={22} lg={18} xl={16} xxl={14}>
                     <Pagination
                         className='cvat-tasks-pagination'
-                        onChange={(page: number, pageSize: number) => {
+                        onChange={(page: number) => {
                             dispatch(getTasksAsync({
                                 ...query,
                                 page,
-                                pageSize,
                             }));
                         }}
+                        showSizeChanger={false}
                         total={count}
-                        pageSize={query.pageSize}
+                        pageSize={10}
                         current={query.page}
                         showQuickJumper
-                        showSizeChanger
                     />
                 </Col>
             </Row>
